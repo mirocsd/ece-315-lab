@@ -1,0 +1,15 @@
+# ninja log v5
+18	114	7918614439561648	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/pmodkypd.c.obj	b14e1e5c04ab373b
+15	182	7918614440241655	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/lab1_part2.c.obj	832ea6594b229cb6
+22	112	7918614439521644	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/rgb_led.c.obj	596ab0534e45a21f
+183	300	7918614441176476	lab1_part2.elf	e192929d2832645b
+24	111	7918614439521644	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/ssd.c.obj	c36c357ce1096cdb
+27	68	7918614439102959	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/vRgbTask.c.obj	ea13b09dc7880180
+20	111	7918614439521644	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/pushbutton.c.obj	7585145d65c78299
+27	71	7918616284992223	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/vRgbTask.c.obj	ea13b09dc7880180
+23	114	7918616285437720	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/rgb_led.c.obj	596ab0534e45a21f
+25	115	7918616285428659	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/ssd.c.obj	c36c357ce1096cdb
+20	115	7918616285428659	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/pushbutton.c.obj	7585145d65c78299
+18	118	7918616285458412	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/pmodkypd.c.obj	b14e1e5c04ab373b
+16	194	7918616286233513	CMakeFiles/lab1_part2.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part2/lab1_part2.c.obj	832ea6594b229cb6
+194	327	7918616287178637	lab1_part2.elf	e192929d2832645b

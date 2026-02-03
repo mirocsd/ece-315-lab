@@ -1,0 +1,24 @@
+#-----------------------------------------------------------
+# Vivado v2024.2 (64-bit)
+# SW Build 5239630 on Fri Nov 08 22:35:27 MST 2024
+# IP Build 5239520 on Sun Nov 10 16:12:51 MST 2024
+# SharedData Build 5239561 on Fri Nov 08 14:39:27 MST 2024
+# Start of session at: Tue Feb  3 14:09:37 2026
+# Process ID         : 15476
+# Current directory  : C:/Users/miro/ece-315-lab/lab1/hw/ece315_lab1/ece315_lab1.runs/lab1_hw_processing_system7_0_0_synth_1
+# Command line       : vivado.exe -log lab1_hw_processing_system7_0_0.vds -product Vivado -mode batch -messageDb vivado.pb -notrace -source lab1_hw_processing_system7_0_0.tcl
+# Log file           : C:/Users/miro/ece-315-lab/lab1/hw/ece315_lab1/ece315_lab1.runs/lab1_hw_processing_system7_0_0_synth_1/lab1_hw_processing_system7_0_0.vds
+# Journal file       : C:/Users/miro/ece-315-lab/lab1/hw/ece315_lab1/ece315_lab1.runs/lab1_hw_processing_system7_0_0_synth_1\vivado.jou
+# Running On         : e5-001-w11
+# Platform           : Windows Server 2016 or Windows 10
+# Operating System   : 26200
+# Processor Detail   : Intel(R) Core(TM) Ultra 7 265
+# CPU Frequency      : 2381 MHz
+# CPU Physical cores : 20
+# CPU Logical cores  : 20
+# Host memory        : 33775 MB
+# Swap memory        : 5100 MB
+# Total Virtual      : 38875 MB
+# Available Virtual  : 27721 MB
+#-----------------------------------------------------------
+source lab1_hw_processing_system7_0_0.tcl -notrace
