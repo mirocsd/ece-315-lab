@@ -35,6 +35,8 @@
 
 // Other miscellaneous libraries
 #include "pmodkypd.h"
+#include "rgb_led.h"
+#include "pushbutton.h"
 #include "ssd.h"
 
 // Device ID declarations
@@ -53,6 +55,9 @@ PmodKYPD 	KYPDInst;
 
 /*************************** Enter your code here ****************************/
 SSD SSDInst;
+RGB_LED RGB_LEDInst;
+XGpio pushButtonInst;
+PUSHBUTTON pushButtonInst;
 /*****************************************************************************/
 
 // Function prototypes
@@ -71,6 +76,8 @@ int main(void)
 
 /*************************** Enter your code here ****************************/
 	SSD_begin(&SSDInst, SSD_BASEADDR);
+	RGB_LED_begin(&RGB_LEDInst, RGB_LED_BASEADDR);
+	PUSHBUTTON_begin(&pushButtonInst, PUSHBUTTON_BASEADDR);
 /*****************************************************************************/
 
 	xil_printf("Initialization Complete, System Ready!\n");
@@ -80,6 +87,13 @@ int main(void)
 				configMINIMAL_STACK_SIZE, 	/* The stack allocated to the task. */
 				NULL, 						/* The task parameter is not used, so set to NULL. */
 				tskIDLE_PRIORITY,			/* The task runs at the idle priority. */
+				NULL);
+
+	xTaskCreate(vRgbTask,
+				"rgb task",
+				configMINIMAL_STACK_SIZE,
+				NULL,
+				tskIDLE_PRIORITY,
 				NULL);
 
 	vTaskStartScheduler();
@@ -119,7 +133,9 @@ static void vKeypadTask( void *pvParameters )
 		}
 		
 /*************************** Enter your code here ****************************/
-		xil_printf("Status changed to: %d\r\n", status);
+		if (status != previous_status){
+			xil_printf("Status changed to: %d\r\n", status);
+		}
 /*****************************************************************************/
 		previous_status = status;
 
@@ -130,8 +146,11 @@ static void vKeypadTask( void *pvParameters )
 		* Add a delay between updates for persistence of vision using `vTaskDelay`.
 		*/
 		// done
-		u8 ssd_value[2] = {SSD_decode(current_key, 0), SSD_decode(previous_key, 1)};
-		SSD_setSSD(&SSDInst, ssd_value);
+		u8 right = SSD_decode(current_key, 0);
+		u8 left = SSD_decode(previous_key, 1);
+		SSD_setSSD(&SSDInst, right);
+		vTaskDelay(xDelay);
+		SSD_setSSD(&SSDInst, left);
 		vTaskDelay(xDelay);
 /*****************************************************************************/
 	}

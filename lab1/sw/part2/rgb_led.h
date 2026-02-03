@@ -15,5 +15,6 @@
 #define RGB_LED_BASEADDR XPAR_GPIO_LEDS_BASEADDR
 #define RGB_CHANNEL   2
 
-
+void RGB_LED_begin(RGB_LED *InstancePtr, u32 GPIO_Address);
+void RGB_LED_setColor(RGB_LED *InstancePtr, u8 color);
 #endif /* RGB_LED_H */
