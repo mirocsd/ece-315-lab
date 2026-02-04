@@ -55,8 +55,8 @@ PmodKYPD 	KYPDInst;
 
 /*************************** Enter your code here ****************************/
 SSD SSDInst;
-RGB_LED RGB_LEDInst;
-PUSHBUTTON pushButtonInst;
+XGpio RGB_LEDInst;
+XGpio pushButtonInst;
 
 xQueueHandle queueDisplay;
 xQueueHandle queueButtons;
@@ -181,9 +181,9 @@ static void vRgbTask(void *pvParameters)
         
         if (status == pdTRUE) {
             xOffDelay = 24 - xOnDelay;
-            XGpio_DiscreteWrite(&RGB_LEDInst.RBGinst, RGB_CHANNEL, color);
+            XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, color);
             vTaskDelay(xOffDelay);
-            XGpio_DiscreteWrite(&RGB_LEDInst.RBGinst, RGB_CHANNEL, 0);
+            XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, 0);
             vTaskDelay(xOnDelay);
         }
     }
@@ -219,7 +219,7 @@ static void vButtonsTask(void *pvParameters) {
     TickType_t xOffDelay;
     TickType_t xDelay = 50;
     while (1){
-        input_value = XGpio_DiscreteRead(&(pushButtonInst.PushInst), PUSHBUTTON_CHANNEL);
+        input_value = XGpio_DiscreteRead(&pushButtonInst, PUSHBUTTON_CHANNEL);
         if (input_value == (u32)0x00000008) {
             if (xOnDelay < 24 && xOffDelay > 0) {
                 xOnDelay += 1;
