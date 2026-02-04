@@ -1,9 +1,0 @@
-# ninja log v5
-18	106	7918581378716361	CMakeFiles/lab1_part1.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part1/ssd.c.obj	bb17dbcb21d824ab
-16	109	7918581378736444	CMakeFiles/lab1_part1.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part1/pmodkypd.c.obj	6e66f2d02c711c0c
-13	177	7918581379424380	CMakeFiles/lab1_part1.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part1/lab1_part1.c.obj	518673fa46edfcc4
-177	290	7918581380315520	lab1_part1.elf	ea94ab6f28490f4b
-17	115	7918585130277795	CMakeFiles/lab1_part1.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part1/ssd.c.obj	bb17dbcb21d824ab
-16	120	7918585130334172	CMakeFiles/lab1_part1.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part1/pmodkypd.c.obj	6e66f2d02c711c0c
-13	174	7918585130878521	CMakeFiles/lab1_part1.elf.dir/C_/Users/miro/ece-315-lab/lab1/sw/lab1_part1/lab1_part1.c.obj	518673fa46edfcc4
-174	286	7918585131737572	lab1_part1.elf	ea94ab6f28490f4b

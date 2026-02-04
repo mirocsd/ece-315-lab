@@ -1,3 +1,0 @@
-C:/Users/miro/ece-315-lab/lab1/sw/lab1_part1/build/CMakeFiles/lab1_part1.elf.dir
-C:/Users/miro/ece-315-lab/lab1/sw/lab1_part1/build/CMakeFiles/edit_cache.dir
-C:/Users/miro/ece-315-lab/lab1/sw/lab1_part1/build/CMakeFiles/rebuild_cache.dir
