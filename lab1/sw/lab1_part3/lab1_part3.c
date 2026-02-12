@@ -21,6 +21,7 @@
 
 // Include FreeRTOS Libraries
 #include <FreeRTOS.h>
+#include <portmacro.h>
 #include <task.h>
 #include <queue.h>
 
@@ -75,8 +76,9 @@ static void vDisplayTask(void *pvParameters);
 int main(void)
 {
 	int status;
-    queueDisplay = xQueueCreate(sizeof(u32), sizeof(u32));
-    queueButtons = xQueueCreate(sizeof(u32), sizeof(u32));
+
+    queueDisplay = xQueueCreate(1, sizeof(u8));
+    queueButtons = xQueueCreate(1, sizeof(u32));
 
 	// Initialize keypad
 	InitializeKeypad();
@@ -148,6 +150,7 @@ static void vKeypadTask( void *pvParameters )
 /*************************** Enter your code here ****************************/
 			previous_key = current_key;
 			current_key = new_key;
+            xQueueOverwrite(queueDisplay, &current_key);
 /*****************************************************************************/
 		} else if (status == KYPD_MULTI_KEY && status != previous_status){
 			xil_printf("Error: Multiple keys pressed\r\n");
@@ -167,7 +170,8 @@ static void vKeypadTask( void *pvParameters )
 		* Add a delay between updates for persistence of vision using `vTaskDelay`.
 		*/
 		// done
-        xQueueOverwrite(queueDisplay, &current_key);
+        
+
 /*****************************************************************************/
 	}
 }
@@ -190,33 +194,34 @@ static void vRgbTask(void *pvParameters)
 }
 
 static void vDisplayTask(void *pvParameters) {
-        u32 current_key, previous_key, xDelay;
-        xDelay = 10;
-
-        current_key = 0;
-        previous_key = 0;
+        u8 new_key, current_key = 'x', previous_key = 'x';
+        u32 xDelay;
+        u8 right = 255, left = 255;
+        xDelay = 10;        
 
         while (1) {
-            int status = xQueueReceive(queueDisplay, (void*)&current_key, 1000);
+            int status = xQueueReceive(queueDisplay, (void*)&new_key, 0);
             if (status == pdTRUE) {
-                
-                u8 right = SSD_decode(current_key, 0);
-                u8 left = SSD_decode(previous_key, 1);
-        
-                SSD_setSSD(&SSDInst, right);
-                vTaskDelay(xDelay);
-                SSD_setSSD(&SSDInst, left);
-                vTaskDelay(xDelay);
-
                 previous_key = current_key;
+                current_key = new_key;
+                right = SSD_decode(current_key, 1);
+                left = SSD_decode(previous_key, 0);
+
+                // xil_printf("right value: %d\n", right);
+                // xil_printf("left value: %d\n", left);
+                
             }
+            SSD_setSSD(&SSDInst, right);
+            vTaskDelay(xDelay);
+            SSD_setSSD(&SSDInst, left);
+            vTaskDelay(xDelay);
         }
 }
 
 static void vButtonsTask(void *pvParameters) {
     u32 input_value;
-    TickType_t xOnDelay;
-    TickType_t xOffDelay;
+    TickType_t xOnDelay = 12;
+    TickType_t xOffDelay = 12;
     TickType_t xDelay = 50;
     while (1){
         input_value = XGpio_DiscreteRead(&pushButtonInst, PUSHBUTTON_CHANNEL);
