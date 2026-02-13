@@ -61,6 +61,11 @@ XGpio pushButtonInst;
 
 xQueueHandle queueDisplay;
 xQueueHandle queueButtons;
+
+typedef struct {
+    u8 previous_key;
+    u8 current_key;
+} display_data_t;
 /*****************************************************************************/
 
 // Function prototypes
@@ -77,7 +82,7 @@ int main(void)
 {
 	int status;
 
-    queueDisplay = xQueueCreate(1, sizeof(u8));
+    queueDisplay = xQueueCreate(1, sizeof(display_data_t));
     queueButtons = xQueueCreate(1, sizeof(u32));
 
 	// Initialize keypad
@@ -129,7 +134,8 @@ static void vKeypadTask( void *pvParameters )
 {
 	u16 keystate;
 	XStatus status, previous_status = KYPD_NO_KEY;
-	u8 new_key, current_key = 'x', previous_key = 'x';
+	u8 new_key;
+    display_data_t display_data = {'x', 'x'};
 	u32 ssd_value=0;
 
 /*************************** Enter your code here ****************************/
@@ -148,9 +154,9 @@ static void vKeypadTask( void *pvParameters )
 		if (status == KYPD_SINGLE_KEY && previous_status == KYPD_NO_KEY){
 			xil_printf("Key Pressed: %c\r\n", (char) new_key);
 /*************************** Enter your code here ****************************/
-			previous_key = current_key;
-			current_key = new_key;
-            xQueueOverwrite(queueDisplay, &current_key);
+            display_data.previous_key = display_data.current_key;
+            display_data.current_key = new_key;
+            xQueueOverwrite(queueDisplay, &display_data);
 /*****************************************************************************/
 		} else if (status == KYPD_MULTI_KEY && status != previous_status){
 			xil_printf("Error: Multiple keys pressed\r\n");
@@ -170,7 +176,7 @@ static void vKeypadTask( void *pvParameters )
 		* Add a delay between updates for persistence of vision using `vTaskDelay`.
 		*/
 		// done
-        
+        vTaskDelay(pdMS_TO_TICKS(50));
 
 /*****************************************************************************/
 	}
@@ -184,7 +190,7 @@ static void vRgbTask(void *pvParameters)
         int status = xQueueReceive(queueButtons, (void*)(&xOnDelay), 1000);
         
         if (status == pdTRUE) {
-            xOffDelay = 24 - xOnDelay;
+            xOffDelay = 20 - xOnDelay;
             XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, color);
             vTaskDelay(xOffDelay);
             XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, 0);
@@ -194,18 +200,15 @@ static void vRgbTask(void *pvParameters)
 }
 
 static void vDisplayTask(void *pvParameters) {
-        u8 new_key, current_key = 'x', previous_key = 'x';
-        u32 xDelay;
-        u8 right = 255, left = 255;
-        xDelay = 10;        
+        display_data_t display_data = {'x', 'x'};
+        u32 xDelay = 10;
+        u32 right = 0, left = 0;
 
         while (1) {
-            int status = xQueueReceive(queueDisplay, (void*)&new_key, 0);
-            if (status == pdTRUE) {
-                previous_key = current_key;
-                current_key = new_key;
-                right = SSD_decode(current_key, 1);
-                left = SSD_decode(previous_key, 0);
+            if (xQueueReceive(queueDisplay, &display_data, 0) == pdTRUE) {
+
+                right = SSD_decode(display_data.previous_key, 1);
+                left = SSD_decode(display_data.current_key, 0);
 
                 // xil_printf("right value: %d\n", right);
                 // xil_printf("left value: %d\n", left);
@@ -220,28 +223,27 @@ static void vDisplayTask(void *pvParameters) {
 
 static void vButtonsTask(void *pvParameters) {
     u32 input_value;
-    TickType_t xOnDelay = 12;
-    TickType_t xOffDelay = 12;
-    TickType_t xDelay = 50;
+    TickType_t xOnDelay = 10;
+    TickType_t xOffDelay = 10;
+    TickType_t xDelay = 20;
     while (1){
         input_value = XGpio_DiscreteRead(&pushButtonInst, PUSHBUTTON_CHANNEL);
         if (input_value == (u32)0x00000008) {
-            if (xOnDelay < 24 && xOffDelay > 0) {
+            if (xOnDelay < 20 && xOffDelay > 0) {
                 xOnDelay += 1;
                 xOffDelay -= 1;
             }
             xil_printf("\nxOnDelay: %d\n", xOnDelay);
             xil_printf("\nxOffDelay: %d\n", xOffDelay);
-            vTaskDelay(xDelay);
         } else if (input_value == (u32)0x00000001) {
-            if (xOffDelay < 24 && xOnDelay > 0){
+            if (xOffDelay < 20 && xOnDelay > 0){
                 xOnDelay -= 1;
                 xOffDelay += 1;
             }
             xil_printf("\nxOnDelay: %d\n", xOnDelay);
             xil_printf("\nxOffDelay: %d\n", xOffDelay);
-            vTaskDelay(xDelay);
         }
+        vTaskDelay(xDelay);
         xQueueOverwrite(queueButtons, &xOnDelay);
     }
 }
