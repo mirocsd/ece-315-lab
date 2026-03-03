@@ -240,6 +240,10 @@ static void vRgbTask(void *pvParameters)
                 if (cmd.params.brightness >= 1 && cmd.params.brightness <= 19) {
                     xOnDelay = cmd.params.brightness;
                     xOffDelay = 20 - xOnDelay;
+                    XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, color);
+                    vTaskDelay(xOffDelay);
+                    XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, 0);
+                    vTaskDelay(xOnDelay);
                 }
             } else if (cmd.type == CMD_LED_COLOR) {
                 color = cmd.params.color & 0x07;
