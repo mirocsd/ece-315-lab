@@ -39,6 +39,10 @@
 #include "rgb_led.h"
 #include "pushbutton.h"
 #include "ssd.h"
+#include "xuartps.h"
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
 
 // Device ID declarations
 #define KYPD_DEVICE_ID   	XPAR_GPIO_KYPD_BASEADDR
@@ -46,6 +50,10 @@
 // TODO: Define the seven-segment display (SSD) base address.
 // done
 #define SSD_BASEADDR XPAR_GPIO_SSD_BASEADDR
+#define UART_BASEADDR XPAR_UART1_BASEADDR
+#define LINE_BUF_LEN 64
+#define CMD_QUEUE_LEN 8
+#define UART_POLL_DELAY_MS 20
 /*****************************************************************************/
 
 // keypad key table
@@ -59,13 +67,36 @@ SSD SSDInst;
 XGpio RGB_LEDInst;
 XGpio pushButtonInst;
 
+static XUartPs UartPs;
+
 xQueueHandle queueDisplay;
 xQueueHandle queueButtons;
+xQueueHandle queueRgbCmd;
+xQueueHandle queueSsdCmd;
 
 typedef struct {
     u8 previous_key;
     u8 current_key;
 } display_data_t;
+
+typedef enum {
+    CMD_LED_BRIGHTNESS,
+    CMD_LED_COLOR,
+    CMD_SSD_DISPLAY,
+    CMD_UNKNOWN
+} uart_cmd_type_t;
+
+typedef struct {
+    uart_cmd_type_t type;
+    union {
+        uint8_t brightness;
+        uint8_t color;
+        struct {
+            u8 left;
+            u8 right;
+        } ssd;
+    } params;
+} uart_cmd_t;
 /*****************************************************************************/
 
 // Function prototypes
@@ -76,6 +107,11 @@ u32 SSD_decode(u8 key_value, u8 cathode);
 
 static void vButtonsTask(void *pvParameters);
 static void vDisplayTask(void *pvParameters);
+static void vUartTask(void *pvParameters);
+static void uart_init(void);
+static int uart_poll_rx(uint8_t *b);
+static void uart_tx_byte(uint8_t b);
+static void parse_and_send(char *line);
 
 
 int main(void)
@@ -84,6 +120,8 @@ int main(void)
 
     queueDisplay = xQueueCreate(1, sizeof(display_data_t));
     queueButtons = xQueueCreate(1, sizeof(u32));
+    queueRgbCmd = xQueueCreate(CMD_QUEUE_LEN, sizeof(uart_cmd_t));
+    queueSsdCmd = xQueueCreate(CMD_QUEUE_LEN, sizeof(uart_cmd_t));
 
 	// Initialize keypad
 	InitializeKeypad();
@@ -92,6 +130,7 @@ int main(void)
 	SSD_begin(&SSDInst, SSD_BASEADDR);
 	RGB_LED_begin(&RGB_LEDInst, RGB_LED_BASEADDR);
 	PUSHBUTTON_begin(&pushButtonInst, PUSHBUTTON_BASEADDR);
+	uart_init();
 /*****************************************************************************/
 
 	xil_printf("Initialization Complete, System Ready!\n");
@@ -122,6 +161,13 @@ int main(void)
                 configMINIMAL_STACK_SIZE, 	/* The stack allocated to the task. */
 				NULL, 						/* The task parameter is not used, so set to NULL. */
 				tskIDLE_PRIORITY,			/* The task runs at the idle priority. */
+				NULL);
+
+	xTaskCreate(vUartTask,
+				"uart task",
+				512,
+				NULL,
+				tskIDLE_PRIORITY,
 				NULL);
 
 	vTaskStartScheduler();
@@ -184,18 +230,29 @@ static void vKeypadTask( void *pvParameters )
 
 static void vRgbTask(void *pvParameters)
 {
-    const uint8_t color = RGB_CYAN;
-    TickType_t xOnDelay, xOffDelay;
+    uint8_t color = RGB_CYAN;
+    TickType_t xOnDelay = 10;
+    TickType_t xOffDelay = 10;
+    uart_cmd_t cmd;
     while (1) {
-        int status = xQueueReceive(queueButtons, (void*)(&xOnDelay), 1000);
-        
-        if (status == pdTRUE) {
+        if (xQueueReceive(queueRgbCmd, &cmd, 0) == pdTRUE) {
+            if (cmd.type == CMD_LED_BRIGHTNESS) {
+                if (cmd.params.brightness >= 1 && cmd.params.brightness <= 19) {
+                    xOnDelay = cmd.params.brightness;
+                    xOffDelay = 20 - xOnDelay;
+                }
+            } else if (cmd.type == CMD_LED_COLOR) {
+                color = cmd.params.color & 0x07;
+            }
+        }
+        if (xQueueReceive(queueButtons, (void*)(&xOnDelay), 0) == pdTRUE) {
             xOffDelay = 20 - xOnDelay;
             XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, color);
             vTaskDelay(xOffDelay);
             XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, 0);
             vTaskDelay(xOnDelay);
         }
+
     }
 }
 
@@ -203,6 +260,7 @@ static void vDisplayTask(void *pvParameters) {
         display_data_t display_data = {'x', 'x'};
         u32 xDelay = 10;
         u32 right = 0, left = 0;
+        uart_cmd_t cmd;
 
         while (1) {
             if (xQueueReceive(queueDisplay, &display_data, 0) == pdTRUE) {
@@ -213,6 +271,10 @@ static void vDisplayTask(void *pvParameters) {
                 // xil_printf("right value: %d\n", right);
                 // xil_printf("left value: %d\n", left);
                 
+            }
+            if (xQueueReceive(queueSsdCmd, &cmd, 0) == pdTRUE && cmd.type == CMD_SSD_DISPLAY) {
+                right = SSD_decode(cmd.params.ssd.right, 0);
+                left = SSD_decode(cmd.params.ssd.left, 1);
             }
             SSD_setSSD(&SSDInst, right);
             vTaskDelay(xDelay);
@@ -248,6 +310,101 @@ static void vButtonsTask(void *pvParameters) {
     }
 }
 
+static void uart_init(void)
+{
+    XUartPs_Config *cfg = XUartPs_LookupConfig(UART_BASEADDR);
+    if (!cfg) return;
+    if (XUartPs_CfgInitialize(&UartPs, cfg, cfg->BaseAddress) != XST_SUCCESS) return;
+    XUartPs_SetBaudRate(&UartPs, 115200);
+}
+
+static int uart_poll_rx(uint8_t *b)
+{
+    if (XUartPs_IsReceiveData(UartPs.Config.BaseAddress)) {
+        *b = XUartPs_ReadReg(UartPs.Config.BaseAddress, XUARTPS_FIFO_OFFSET);
+        return 1;
+    }
+    return 0;
+}
+
+static void uart_tx_byte(uint8_t b)
+{
+    while (XUartPs_IsTransmitFull(UartPs.Config.BaseAddress)) {}
+    XUartPs_WriteReg(UartPs.Config.BaseAddress, XUARTPS_FIFO_OFFSET, b);
+}
+
+static uint8_t char_to_color(char c)
+{
+    switch (c) {
+        case 'R': return RGB_RED;
+        case 'G': return RGB_GREEN;
+        case 'B': return RGB_BLUE;
+        case 'Y': return RGB_YELLOW;
+        case 'C': return RGB_CYAN;
+        case 'M': return RGB_MAGENTA;
+        case 'W': return RGB_WHITE;
+        case '0': return RGB_OFF;
+        default: return RGB_CYAN;
+    }
+}
+
+static void parse_and_send(char *line)
+{
+    uart_cmd_t cmd;
+    char c1, c2;
+    int br;
+    while (*line == ' ' || *line == '\t') line++;
+    if (*line == 'B' || *line == 'b') {
+        line++;
+        if (sscanf(line, "%d", &br) == 1 && br >= 1 && br <= 19) {
+            cmd.type = CMD_LED_BRIGHTNESS;
+            cmd.params.brightness = (uint8_t)br;
+            xQueueSend(queueRgbCmd, &cmd, 0);
+        }
+        return;
+    }
+    if (*line == 'C' || *line == 'c') {
+        line++;
+        while (*line == ' ' || *line == '\t') line++;
+        if (*line) {
+            cmd.type = CMD_LED_COLOR;
+            cmd.params.color = char_to_color(*line);
+            xQueueSend(queueRgbCmd, &cmd, 0);
+        }
+        return;
+    }
+    if (*line == 'S' || *line == 's') {
+        line++;
+        if (sscanf(line, " %c %c", &c1, &c2) == 2) {
+            cmd.type = CMD_SSD_DISPLAY;
+            cmd.params.ssd.left = (u8)c1;
+            cmd.params.ssd.right = (u8)c2;
+            xQueueSend(queueSsdCmd, &cmd, 0);
+        }
+        return;
+    }
+}
+
+static void vUartTask(void *pvParameters)
+{
+    char line[LINE_BUF_LEN];
+    size_t idx = 0;
+    uint8_t byte;
+    for (;;) {
+        if (uart_poll_rx(&byte)) {
+            if (byte == '\n' || byte == '\r') {
+                if (idx > 0) {
+                    line[idx] = '\0';
+                    parse_and_send(line);
+                    idx = 0;
+                }
+            } else if (idx < LINE_BUF_LEN - 1) {
+                line[idx++] = (char)byte;
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(UART_POLL_DELAY_MS));
+    }
+}
 
 void InitializeKeypad()
 {
