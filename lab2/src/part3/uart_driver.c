@@ -26,6 +26,7 @@ QueueHandle_t xRxQueue;
 // Interrupt counters
 int countRxIrq;
 int countTxIrq;
+int countSent;
 int byteCount;
 
 // -------------------------------------------------
@@ -67,6 +68,7 @@ void handleReceiveEvent()
 
     }
 
+    countRxIrq++;
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
@@ -78,6 +80,7 @@ void handleSentEvent()
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     u8 txByte;
 
+    countTxIrq++;
 
     // Fill FIFO while not full and queue has data
     while (!(XUartPs_ReadReg(UART.Config.BaseAddress, XUARTPS_SR_OFFSET) & XUARTPS_SR_TXFULL)){
@@ -98,12 +101,16 @@ void handleSentEvent()
 // -------------------------------------------------
 void enableTxEmpty()
 {
-    
+    u32 mask = XUartPs_GetInterruptMask(&UART);
+    mask |= XUARTPS_IXR_TXEMPTY;
+    XUartPs_SetInterruptMask(&UART, mask);
 }
 
 void disableTxEmpty()
 {
-    
+    u32 mask = XUartPs_GetInterruptMask(&UART);
+    mask &= ~XUARTPS_IXR_TXEMPTY;
+    XUartPs_SetInterruptMask(&UART, mask);
 }
 
 // -------------------------------------------------
@@ -123,19 +130,27 @@ BaseType_t myTransmitFull(void)
 
 void mySendByte(u8 data)
 {
-    
+    xQueueSend(xTxQueue, &data, portMAX_DELAY);
+    enableTxEmpty();
 }
 
 
 u8 myReceiveByte(void)
 {
-    
+    u8 data;
+    xQueueReceive(xRxQueue, &data, portMAX_DELAY);
+    byteCount++;
+    return data;
 }
 
 
 void mySendString(const char* str)
 {
-    
+    while (*str){
+        xQueueSend(xTxQueue, (const u8 *)str, portMAX_DELAY);
+        str++;
+    }
+    enableTxEmpty();
 }
 
 
