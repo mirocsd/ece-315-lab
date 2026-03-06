@@ -101,16 +101,14 @@ void handleSentEvent()
 // -------------------------------------------------
 void enableTxEmpty()
 {
-    u32 mask = XUartPs_GetInterruptMask(&UART);
-    mask |= XUARTPS_IXR_TXEMPTY;
-    XUartPs_SetInterruptMask(&UART, mask);
+    IntrMask |= XUARTPS_IXR_TXEMPTY;
+    XUartPs_SetInterruptMask(&UART, IntrMask);
 }
 
 void disableTxEmpty()
 {
-    u32 mask = XUartPs_GetInterruptMask(&UART);
-    mask &= ~XUARTPS_IXR_TXEMPTY;
-    XUartPs_SetInterruptMask(&UART, mask);
+    IntrMask &= ~XUARTPS_IXR_TXEMPTY;
+    XUartPs_SetInterruptMask(&UART, IntrMask);
 }
 
 // -------------------------------------------------
@@ -130,8 +128,22 @@ BaseType_t myTransmitFull(void)
 
 void mySendByte(u8 data)
 {
+    taskENTER_CRITICAL();
+
+    BaseType_t wasEmpty = (uxQueueMessagesWaiting(xTxQueue) == 0);
+
     xQueueSend(xTxQueue, &data, portMAX_DELAY);
-    enableTxEmpty();
+
+     if (wasEmpty) {
+        // Start TX immediately by writing one byte to FIFO
+        u8 b;
+        if (xQueueReceive(xTxQueue, &b, 0) == pdPASS) {
+            XUartPs_WriteReg(UART.Config.BaseAddress, XUARTPS_FIFO_OFFSET, b);
+        }
+        enableTxEmpty(); // ISR will handle the rest
+    }
+
+    taskEXIT_CRITICAL();
 }
 
 
@@ -146,11 +158,25 @@ u8 myReceiveByte(void)
 
 void mySendString(const char* str)
 {
+    taskENTER_CRITICAL();
+
+    BaseType_t wasEmpty = (uxQueueMessagesWaiting(xTxQueue) == 0);
+
     while (*str){
-        xQueueSend(xTxQueue, (const u8 *)str, portMAX_DELAY);
-        str++;
+        u8 ch = (u8)*str++;
+        xQueueSend(xTxQueue, &ch, portMAX_DELAY);
     }
-    enableTxEmpty();
+   
+     if (wasEmpty) {
+        // Start TX immediately by writing one byte to FIFO
+        u8 b;
+        if (xQueueReceive(xTxQueue, &b, 0) == pdPASS) {
+            XUartPs_WriteReg(UART.Config.BaseAddress, XUARTPS_FIFO_OFFSET, b);
+        }
+        enableTxEmpty(); // ISR will handle the rest
+    }
+
+    taskEXIT_CRITICAL();
 }
 
 
