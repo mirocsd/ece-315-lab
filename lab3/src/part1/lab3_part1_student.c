@@ -55,7 +55,7 @@
 
 #define CHAR_CARRIAGE_RETURN     0x0D
 #define CHAR_PERCENT             0x25
-#define CHAR_DOLLAR              0x241
+#define CHAR_DOLLAR              0x24
 
 #define LED_RED                  0x4
 #define LED_GREEN                0x2
