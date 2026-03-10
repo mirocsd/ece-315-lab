@@ -238,12 +238,8 @@ static void vRgbTask(void *pvParameters)
         if (xQueueReceive(queueRgbCmd, &cmd, 0) == pdTRUE) {
             if (cmd.type == CMD_LED_BRIGHTNESS) {
                 if (cmd.params.brightness >= 1 && cmd.params.brightness <= 19) {
-                    xOnDelay = cmd.params.brightness;
-                    xOffDelay = 20 - xOnDelay;
-                    XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, color);
-                    vTaskDelay(xOffDelay);
-                    XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, 0);
-                    vTaskDelay(xOnDelay);
+                    xOffDelay = cmd.params.brightness;
+                    xOnDelay = 20 - xOffDelay;
                 }
             } else if (cmd.type == CMD_LED_COLOR) {
                 color = cmd.params.color & 0x07;
@@ -251,11 +247,12 @@ static void vRgbTask(void *pvParameters)
         }
         if (xQueueReceive(queueButtons, (void*)(&xOnDelay), 0) == pdTRUE) {
             xOffDelay = 20 - xOnDelay;
-            XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, color);
-            vTaskDelay(xOffDelay);
-            XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, 0);
-            vTaskDelay(xOnDelay);
         }
+
+        XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, color);
+        vTaskDelay(xOffDelay);
+        XGpio_DiscreteWrite(&RGB_LEDInst, RGB_CHANNEL, 0);
+        vTaskDelay(xOnDelay);
 
     }
 }
@@ -269,16 +266,16 @@ static void vDisplayTask(void *pvParameters) {
         while (1) {
             if (xQueueReceive(queueDisplay, &display_data, 0) == pdTRUE) {
 
-                right = SSD_decode(display_data.previous_key, 0);
-                left = SSD_decode(display_data.current_key, 1);
+                right = SSD_decode(display_data.previous_key, 1);
+                left = SSD_decode(display_data.current_key, 0);
 
                 // xil_printf("right value: %d\n", right);
                 // xil_printf("left value: %d\n", left);
                 
             }
             if (xQueueReceive(queueSsdCmd, &cmd, 0) == pdTRUE && cmd.type == CMD_SSD_DISPLAY) {
-                right = SSD_decode(cmd.params.ssd.right, 0);
-                left = SSD_decode(cmd.params.ssd.left, 1);
+                right = SSD_decode(toupper(cmd.params.ssd.right), 1);
+                left = SSD_decode(toupper(cmd.params.ssd.left), 0);
             }
             SSD_setSSD(&SSDInst, right);
             vTaskDelay(xDelay);
@@ -301,6 +298,7 @@ static void vButtonsTask(void *pvParameters) {
             }
             xil_printf("\nxOnDelay: %d\n", xOnDelay);
             xil_printf("\nxOffDelay: %d\n", xOffDelay);
+            xQueueOverwrite(queueButtons, &xOnDelay);
         } else if (input_value == (u32)0x00000001) {
             if (xOffDelay < 19 && xOnDelay > 1){
                 xOnDelay -= 1;
@@ -308,9 +306,10 @@ static void vButtonsTask(void *pvParameters) {
             }
             xil_printf("\nxOnDelay: %d\n", xOnDelay);
             xil_printf("\nxOffDelay: %d\n", xOffDelay);
+            xQueueOverwrite(queueButtons, &xOnDelay);
         }
         vTaskDelay(xDelay);
-        xQueueOverwrite(queueButtons, &xOnDelay);
+
     }
 }
 
