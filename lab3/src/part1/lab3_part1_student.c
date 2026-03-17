@@ -162,7 +162,7 @@ static void vUartManagerTask(void *pvParameters)
             while (1) {
                 xQueueSend(uart_to_spi, &dummy, 0);
                 xQueueReceive(spi_to_uart, &recvd, 0);
-                if (recvd != CHAR_DOLLAR || recvd != CHAR_PERCENT) uartWriteByte(recvd);
+                if (recvd != CHAR_DOLLAR && recvd != CHAR_PERCENT) uartWriteByte(recvd);
                 if (recvd == CHAR_DOLLAR)
                     break;
                 
@@ -242,7 +242,7 @@ static void vSpiMainTask(void *pvParameters)
 
                         spiMasterTransfer(tx_frame, rx_frame, frame_index);
                         for (int i = 0; i < TRANSFER_SIZE_IN_BYTES; i++)
-                            xQueueSend(spi_to_uart, &tx_frame[i], 0);
+                            xQueueSend(spi_to_uart, &rx_frame[i], 0);
                         
                         memset(rx_frame, 0, sizeof(rx_frame));
                         memset(tx_frame, 0, sizeof(tx_frame));
@@ -287,8 +287,8 @@ static void vSpiSubTask(void *pvParameters)
         if (spi_loopback && command_flag == 2) {
 			// TODO 10: prepare for transmission, load data into tx_frame
             spiSlaveTransfer(tx_frame, rx_frame, TRANSFER_SIZE_IN_BYTES);
-			for (int i = 0; i < TRANSFER_SIZE_IN_BYTES; i++)
-                xQueueSend(spi_to_uart, &tx_frame[i], 0);
+			// for (int i = 0; i < TRANSFER_SIZE_IN_BYTES; i++)
+            //     xQueueSend(spi_to_uart, &tx_frame[i], 0);
 
             
 			if (report_stream_active) {
