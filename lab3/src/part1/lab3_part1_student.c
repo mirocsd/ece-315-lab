@@ -159,16 +159,15 @@ static void vUartManagerTask(void *pvParameters)
         if (report_flag) {
             // TODO 14: send $ until a $ is received
             char recvd = 0;
-            while (1) {
-                xQueueSend(uart_to_spi, &dummy, 0);
-                xQueueReceive(spi_to_uart, &recvd, 0);
-                if (recvd != CHAR_DOLLAR && recvd != CHAR_PERCENT) uartWriteByte(recvd);
-                if (recvd == CHAR_DOLLAR)
-                    break;
-                
+            if (xQueueSend(uart_to_spi, &dummy, 0) == pdPASS) {
+                if (xQueueReceive(spi_to_uart, &recvd, 0) == pdPASS) {
+                    if (recvd != CHAR_DOLLAR && recvd != CHAR_PERCENT && recvd != CHAR_CARRIAGE_RETURN) uartWriteByte(recvd);
+                    if (recvd == CHAR_DOLLAR) {
+                        report_flag = 0;
+                    }
+                }   
+                continue;
             }
-            report_flag = 0;
-            terminateInput();
         }
         
         if (uartReadByte(&uart_byte)) {
