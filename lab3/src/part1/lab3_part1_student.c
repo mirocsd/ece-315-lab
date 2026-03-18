@@ -161,13 +161,15 @@ static void vUartManagerTask(void *pvParameters)
             char recvd = 0;
             if (xQueueSend(uart_to_spi, &dummy, 0) == pdPASS) {
                 if (xQueueReceive(spi_to_uart, &recvd, 0) == pdPASS) {
-                    if (recvd != CHAR_DOLLAR && recvd != CHAR_PERCENT && recvd != CHAR_CARRIAGE_RETURN) uartWriteByte(recvd);
+                    if (recvd != CHAR_DOLLAR && recvd != CHAR_PERCENT && recvd != CHAR_CARRIAGE_RETURN && recvd != 0x0A) {
+                        uartWriteByte(recvd);
+                    }
                     if (recvd == CHAR_DOLLAR) {
                         report_flag = 0;
                     }
                 }   
                 continue;
-            }
+            } 
         }
         
         if (uartReadByte(&uart_byte)) {
@@ -197,7 +199,9 @@ static void vUartManagerTask(void *pvParameters)
         }
 
         while (xQueueReceive(spi_to_uart, &spi_byte, 0)) {
-            uartWriteByte(spi_byte);
+            if(spi_byte != CHAR_DOLLAR) {
+                uartWriteByte(spi_byte);
+            }
         }
 
         vTaskDelay(1);
@@ -240,8 +244,9 @@ static void vSpiMainTask(void *pvParameters)
 						// after transmission send data to queue
 
                         spiMasterTransfer(tx_frame, rx_frame, frame_index);
-                        for (int i = 0; i < TRANSFER_SIZE_IN_BYTES; i++)
-                            xQueueSend(spi_to_uart, &rx_frame[i], 0);
+                        // for (int i = 0; i < TRANSFER_SIZE_IN_BYTES; i++) {
+                        //     xQueueSend(spi_to_uart, &rx_frame[i], 0);
+                        // }
                         
                         memset(rx_frame, 0, sizeof(rx_frame));
                         memset(tx_frame, 0, sizeof(tx_frame));
@@ -286,8 +291,8 @@ static void vSpiSubTask(void *pvParameters)
         if (spi_loopback && command_flag == 2) {
 			// TODO 10: prepare for transmission, load data into tx_frame
             spiSlaveTransfer(tx_frame, rx_frame, TRANSFER_SIZE_IN_BYTES);
-			// for (int i = 0; i < TRANSFER_SIZE_IN_BYTES; i++)
-            //     xQueueSend(spi_to_uart, &tx_frame[i], 0);
+			for (int i = 0; i < TRANSFER_SIZE_IN_BYTES; i++)
+                 xQueueSend(spi_to_uart, &tx_frame[i], 0);
 
             
 			if (report_stream_active) {
@@ -327,7 +332,7 @@ static void vSpiSubTask(void *pvParameters)
 
                 total_bytes_received_over_spi++;
                 message_byte_count++;
-
+                
                 updateRollingBuffer(rolling, current);
 
                 // if termination sequence is detected set report_stream_active = pdTRUE
@@ -340,7 +345,7 @@ static void vSpiSubTask(void *pvParameters)
 					
 					// TODO 13: generate report string. hint: use report_len = snprintf()
                     // specific format is in the handout
-                    report_len = snprintf(report, 256, "\nNumber of bytes received over SPI:%d\nLast message byte count: %d\nTotal messages received: %d\n", total_bytes_received_over_spi, last_message_byte_count, total_messages_received);
+                    report_len = snprintf(report, 256, "\nNumber of bytes received over SPI:%d\nLast message byte count: %d\nTotal messages received: %d\n", total_bytes_received_over_spi, last_message_byte_count-3, total_messages_received);
                     report_idx = 0;  // index of sent byte
                     report_flag = 1; // signals uart task to flush the report
                     report_stream_active = pdTRUE; // local flag
