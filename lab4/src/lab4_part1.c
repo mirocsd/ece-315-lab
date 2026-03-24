@@ -81,6 +81,7 @@ typedef struct {
 
 decision_parameters motor_parameters;
 int parameters_flag = 0;
+int emergency_flag = 0;
 
 int positionSequence[SEQUENCE_LENGTH][2] = {{NO_OF_STEPS_PER_REVOLUTION_FULL_DRIVE, 0}}; // position-delay array
 int sequenceIndex = 0; // the number of position-delay sequences
@@ -178,6 +179,7 @@ static void _Task_Uart( void *pvParameters ){
 	int message_flag = 0;
 
 	while(1){
+        while(emergency_flag){}
 
 		// print the message that corresponds to the parameter we want to get. This the menu that gets printed initially!
 		if(message_flag == 0){
@@ -413,7 +415,6 @@ static void _Task_Motor( void *pvParameters ){
 	Stepper_Initialize();
 	
 	while(1){
-
 		/**********************************************************************************************/
 		// get the motor parameters from the queue (FIFO1). The structure "decision_parameters" to store the received data has been declared in this task for you.
 
@@ -454,12 +455,13 @@ static void _Task_Motor( void *pvParameters ){
 		/**********************************************************************************************/
 
 		// print the motor position, and reset variables to start getting the next position-delay sequence
-		xil_printf("\n\nCurrent position of the motor = %d steps\n", motor_parameters.currentposition_in_steps);
-		xil_printf("Press <ENTER> to keep this value, or type a new starting position and then <ENTER>\n");
+        if(!emergency_flag){
+            xil_printf("\n\nCurrent position of the motor = %d steps\n", motor_parameters.currentposition_in_steps);
+		    xil_printf("Press <ENTER> to keep this value, or type a new starting position and then <ENTER>\n");
 
-		parameters_flag = 0;
-		sequenceIndex = 0;
-
+		    parameters_flag = 0;
+		    sequenceIndex = 0;
+        }
 	}
 }
 
@@ -495,6 +497,7 @@ static void _Task_Emerg_Stop( void *pvParameters ){
 			Stepper_setCurrentPositionInSteps(Stepper_getCurrentPositionInSteps());
 			Stepper_disableMotor();
             xil_printf("Emergency Stop");
+            emergency_flag = 1;
 			sequenceIndex = 0;
 
 			while (1) {
